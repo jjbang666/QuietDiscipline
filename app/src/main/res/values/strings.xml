@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">静心自律</string>
+    <string name="status_free_time">自由时段</string>
+    <string name="status_restricted_time">限制时段</string>
+    <string name="remaining_quota">剩余短时额度</string>
+    <string name="today_used">今日已使用</string>
+    <string name="time_rules">时间段设置</string>
+    <string name="app_management">应用管理</string>
+    <string name="data_stats">数据统计</string>
+    <string name="freeze_title">冷冻中</string>
+    <string name="freeze_remaining">剩余等待时间</string>
+    <string name="freeze_suggestion_title">等待时可以：</string>
+    <string name="short_time_duration">短时时长</string>
+    <string name="freeze_duration">冷冻时长</string>
+    <string name="select_apps">选择管理应用</string>
+    <string name="usage_stats_permission">使用统计权限</string>
+    <string name="usage_stats_guide">需要开启"使用统计"权限才能监控应用使用情况</string>
+    <string name="go_to_settings">前往设置</string>
+    <string name="monitor_running">静心自律正在守护你</string>
+    <string name="default_quote">不积跬步，无以至千里。</string>
+    <string name="default_author">荀子</string>
+</resources>

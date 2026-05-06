@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 主主题 -->
+    <style name="Theme.QuietDiscipline" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- 冷冻界面主题：全屏不可关闭 -->
+    <style name="Theme.QuietDiscipline.Freeze" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
+</resources>
