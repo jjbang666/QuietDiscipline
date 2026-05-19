@@ -28,12 +28,9 @@ import java.time.format.DateTimeFormatter
 /**
  * 应用使用监控服务
  *
- * 逻辑：
- * 1. 检测前台应用 → 忽略自身和系统应用
- * 2. 查找该应用的 TimeProfile → 未管理则放行
- * 3. 检查解冻冷却期 → 冷却期内直接触发冷冻
- * 4. 自由时段 → 允许使用
- * 5. 限制时段 → 检查该应用的短时额度 → 有额度允许并扣减，额度耗尽触发冷冻
+ * 两种工作模式：
+ * - 额度模式："quota" → 限制时段内每天固定额度，用完即止
+ * - 短时循环模式："cycle" → 短时间使用→冷冻→解冻后额度恢复→循环
  */
 class AppUsageMonitorService : Service() {
 
@@ -76,7 +73,7 @@ class AppUsageMonitorService : Service() {
     private var lastForegroundPackage: String? = null
     private var currentSessionStart: Long = 0L
 
-    /** 每应用今日已用短时额度(秒): packageName → usedSeconds */
+    /** 每应用已使用时长(秒): packageName → usedSeconds */
     private val perAppShortTimeUsed = mutableMapOf<String, Int>()
 
     private var entryPoint: MonitorServiceEntryPoint? = null
@@ -90,9 +87,10 @@ class AppUsageMonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = buildNotification()
+        val notification = buildNotification(null)
         startForeground(NOTIFICATION_ID, notification)
         startMonitoring()
+        startNotificationUpdater()
         return START_STICKY
     }
 
@@ -113,9 +111,13 @@ class AppUsageMonitorService : Service() {
                         continue
                     }
 
-                    if (foregroundPkg != lastForegroundPackage) {
-                        lastForegroundPackage?.let { endAppSession(it) }
-                        lastForegroundPackage = foregroundPkg
+                    // 应用切换 或 刚从冷冻解冻（同一应用需重新检查）
+                    val justUnfrozen = freezeManager.isJustReleased(foregroundPkg)
+                    if (foregroundPkg != lastForegroundPackage || justUnfrozen) {
+                        if (foregroundPkg != lastForegroundPackage) {
+                            lastForegroundPackage?.let { endAppSession(it) }
+                            lastForegroundPackage = foregroundPkg
+                        }
                         currentSessionStart = System.currentTimeMillis()
                         checkAppLimit(foregroundPkg)
                     }
@@ -131,12 +133,12 @@ class AppUsageMonitorService : Service() {
     /**
      * 检查应用是否需要受限
      *
-     * - 自身/系统应用 → 放行
-     * - 未管理应用 → 放行
-     * - 解冻冷却期内 → 直接冷冻
-     * - 自由时段 → 放行
-     * - 限制时段+有额度 → 放行（额度在 endAppSession 中扣减）
-     * - 限制时段+额度耗尽 → 冷冻
+     * 决策链：
+     * 1. 自身/系统应用 → 放行
+     * 2. 未管理应用 → 放行
+     * 3. 循环模式 + 刚解冻 → 重置额度
+     * 4. 自由时段 → 放行
+     * 5. 检查额度 → 超限则冷冻
      */
     private suspend fun checkAppLimit(packageName: String) {
         if (packageName == this.packageName) return
@@ -145,29 +147,23 @@ class AppUsageMonitorService : Service() {
         // 查找该应用的 TimeProfile
         val profile = repository.getProfileForPackage(packageName) ?: return
 
-        // 检查解冻冷却期
-        if (freezeManager.isInCooldown(packageName)) {
-            freezeManager.triggerFreeze(
-                this, packageName,
-                freezeMinutes = profile.freezeMinutes,
-                cooldownMinutes = profile.unfreezeCooldownMinutes
-            )
-            return
+        // 循环模式：刚从冷冻解冻则重置额度
+        if (profile.mode == "cycle" && freezeManager.consumeJustReleased(packageName)) {
+            perAppShortTimeUsed.remove(packageName)
         }
 
         // 自由时段不限
         val rules = repository.getActiveRules().firstOrNull() ?: emptyList()
         if (timeRuleEngine.isInFreeTime(rules)) return
 
-        // 限制时段：检查该应用的短时额度
+        // 检查该应用的额度
         val shortTimeMax = profile.shortTimeMinutes * 60
         val used = perAppShortTimeUsed[packageName] ?: 0
         val remaining = shortTimeMax - used
         if (remaining <= 0) {
             freezeManager.triggerFreeze(
                 this, packageName,
-                freezeMinutes = profile.freezeMinutes,
-                cooldownMinutes = profile.unfreezeCooldownMinutes
+                freezeMinutes = profile.freezeMinutes
             )
         }
     }
@@ -220,15 +216,32 @@ class AppUsageMonitorService : Service() {
         return null
     }
 
-    fun resetDailyQuota() {
-        perAppShortTimeUsed.clear()
+    /**
+     * 定时更新通知栏内容
+     */
+    private fun startNotificationUpdater() {
+        serviceScope.launch {
+            while (isActive) {
+                try {
+                    val nm = getSystemService(NotificationManager::class.java)
+                    if (freezeManager.isFrozen()) {
+                        val notification = buildNotification(
+                            "冷冻中 ${freezeManager.getFreezeDuration()}分钟"
+                        )
+                        nm.notify(NOTIFICATION_ID, notification)
+                    } else {
+                        nm.notify(NOTIFICATION_ID, buildNotification(null))
+                    }
+                } catch (_: Exception) {
+                    // 更新失败不影响监控
+                }
+                delay(5000L)
+            }
+        }
     }
 
-    fun getRemainingShortTime(packageName: String?): Int {
-        if (packageName == null) return 0
-        val used = perAppShortTimeUsed[packageName] ?: return 0
-        // TODO: 获取该应用的 profile 额度来计算，但此处不阻塞
-        return used
+    fun resetDailyQuota() {
+        perAppShortTimeUsed.clear()
     }
 
     fun getUsedShortTime(packageName: String): Int {
@@ -245,17 +258,18 @@ class AppUsageMonitorService : Service() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(subtitle: String?): Notification {
         val intent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val text = subtitle ?: getString(R.string.monitor_running)
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
                 .setContentTitle("静心自律")
-                .setContentText(getString(R.string.monitor_running))
+                .setContentText(text)
                 .setSmallIcon(android.R.drawable.ic_menu_manage)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
@@ -264,7 +278,7 @@ class AppUsageMonitorService : Service() {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
                 .setContentTitle("静心自律")
-                .setContentText(getString(R.string.monitor_running))
+                .setContentText(text)
                 .setSmallIcon(android.R.drawable.ic_menu_manage)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)

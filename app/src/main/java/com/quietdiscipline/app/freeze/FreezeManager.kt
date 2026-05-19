@@ -8,7 +8,7 @@ import javax.inject.Singleton
 
 /**
  * 冷冻管理器
- * 管理应用冷冻状态与解冻冷却期
+ * 管理应用冷冻状态与循环模式解冻通知
  */
 @Singleton
 class FreezeManager @Inject constructor(
@@ -25,21 +25,16 @@ class FreezeManager @Inject constructor(
     private var freezeStartTimeMs: Long = 0L
     private var freezeDurationMinutes: Int = 5
 
-    // 解冻冷却状态: packageName → 冷却结束时间戳(ms)
-    private val cooldownEndTimeMap = mutableMapOf<String, Long>()
+    // 刚解冻的应用集合（循环模式读取后清除）
+    private val justReleasedPackages = mutableSetOf<String>()
 
     /**
      * 触发冷冻机制
-     * @param context 上下文
-     * @param packageName 被冷冻的应用包名
-     * @param freezeMinutes 冷冻时长(分钟)，来自 TimeProfile
-     * @param cooldownMinutes 冷却时长(分钟)，来自 TimeProfile，0=无冷却
      */
     fun triggerFreeze(
         context: Context,
         packageName: String,
-        freezeMinutes: Int,
-        cooldownMinutes: Int = 0
+        freezeMinutes: Int
     ) {
         if (isFrozen) return
 
@@ -57,53 +52,28 @@ class FreezeManager @Inject constructor(
     }
 
     /**
-     * 解除冷冻，将当前应用写入冷却期
+     * 解除冷冻，记录刚解冻的应用（循环模式用）
      */
     fun releaseFreeze() {
-        val pkg = frozenPackageName
-        if (pkg != null) {
-            // 冷却时长由 triggerFreeze 时设置，此处从当前剩余冷却配置读取
-            val cooldownMinutes = freezeDurationMinutes // 使用冷冻时长为默认冷却时长
-            if (cooldownMinutes > 0) {
-                cooldownEndTimeMap[pkg] = System.currentTimeMillis() + cooldownMinutes * 60_000L
-            }
-        }
+        frozenPackageName?.let { justReleasedPackages.add(it) }
         isFrozen = false
         frozenPackageName = null
         freezeStartTimeMs = 0L
     }
 
     /**
-     * 解除冷冻并设置冷却期
-     * @param cooldownMinutes 冷却时长(分钟)
+     * 消费"刚解冻"标记，用于循环模式检测解冻后额度重置
+     * @return true 表示该应用刚从冷冻中解冻
      */
-    fun releaseFreezeWithCooldown(cooldownMinutes: Int) {
-        val pkg = frozenPackageName
-        if (pkg != null && cooldownMinutes > 0) {
-            cooldownEndTimeMap[pkg] = System.currentTimeMillis() + cooldownMinutes * 60_000L
-        }
-        isFrozen = false
-        frozenPackageName = null
-        freezeStartTimeMs = 0L
+    fun consumeJustReleased(packageName: String): Boolean {
+        return justReleasedPackages.remove(packageName)
     }
 
     /**
-     * 检查应用是否处于解冻冷却期
+     * 仅查询是否刚解冻，不消费标记（用于监控循环强制重新检查）
      */
-    fun isInCooldown(packageName: String): Boolean {
-        val endTime = cooldownEndTimeMap[packageName] ?: return false
-        if (System.currentTimeMillis() < endTime) return true
-        // 冷却已过期，清理
-        cooldownEndTimeMap.remove(packageName)
-        return false
-    }
-
-    /**
-     * 获取应用的冷却剩余秒数
-     */
-    fun getCooldownRemainingSeconds(packageName: String): Long {
-        val endTime = cooldownEndTimeMap[packageName] ?: return 0L
-        return ((endTime - System.currentTimeMillis()) / 1000).coerceAtLeast(0)
+    fun isJustReleased(packageName: String): Boolean {
+        return packageName in justReleasedPackages
     }
 
     /**

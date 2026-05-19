@@ -81,10 +81,9 @@ fun GuideScreen(
             item {
                 MechanismCard(
                     number = "02",
-                    title = "冷冻等待与解冻冷却",
-                    description = "当你在非自由时段且短时额度耗尽时打开应用，会触发冷冻。" +
-                            "需等待指定时长后才能继续使用。冷冻解除后进入「冷却期」，" +
-                            "冷却期内再次打开该应用将直接触发新一轮冷冻，帮助度过冲动高峰。",
+                    title = "冷冻等待",
+                    description = "在非自由时段，当额度用尽或单次使用超时时，触发全屏冷冻等待。" +
+                            "需等待指定时长后才能继续使用。冷冻期间显示名言警句和正念建议，帮你度过冲动高峰。",
                     color = FreezeBlueDark
                 )
             }
@@ -94,14 +93,72 @@ fun GuideScreen(
                     number = "03",
                     title = "时间模块（TimeProfile）",
                     description = "每个被管理的应用可分配一个独立的时间模块。" +
-                            "模块包含四种设置：短时额度（限制时段日用量）、冷冻时长、解冻冷却时长。" +
+                            "模块包含工作模式、额度/单次时长和冷冻时长。" +
                             "你可以创建多个模块（如「轻度限制」「游戏专用」），为不同应用设置不同策略。",
                     color = Amber800
                 )
             }
             item { HorizontalDivider(color = Gray200) }
 
-            // ===== 3. 使用流程 =====
+            // ===== 3. 时间设置详解 =====
+            item {
+                GuideSection(
+                    icon = Icons.Default.Timer,
+                    iconColor = Amber600,
+                    title = "时间设置详解",
+                    content = ""
+                )
+            }
+            item {
+                TimeSettingCard(
+                    title = "额度模式（每日固定额度）",
+                    range = "额度 0~120 分钟 · 冷冻 5~30 分钟",
+                    color = Green600,
+                    description = "限制时段内每天有固定的使用额度，额度用完后当天在限制时段内每次打开都会冷冻。",
+                    details = listOf(
+                        "每天额度用完 → 限制时段内打开即冻，无法使用" to "",
+                        "额度 0 分钟 → 限制时段内直接冷冻，零容忍" to "",
+                        "额度 120 分钟 → 每天有 2 小时使用额度" to "",
+                        "自由时段内使用不计入额度" to "",
+                        "每日凌晨额度自动重置" to ""
+                    )
+                )
+            }
+            item { Spacer(modifier = Modifier.height(4.dp)) }
+            item {
+                TimeSettingCard(
+                    title = "短时循环模式（用超即冻，循环往复）",
+                    range = "单次 0~120 分钟 · 冷冻 5~30 分钟",
+                    color = Amber800,
+                    description = "每次短时间使用 → 超时冷冻 → 解冻后额度恢复 → 可继续使用 → 再超再冻，循环往复。",
+                    details = listOf(
+                        "使用 → 超时 → 冷冻 → 解冻 → 额度恢复 → 可再次使用" to "",
+                        "每次解冻后获得全新的使用额度，不会被之前的使用消耗" to "",
+                        "适合需要频繁短时间检查但不想沉浸的应用" to "",
+                        "自由时段内无限使用，不受任何限制" to "",
+                        "如果你想严格限制某应用，建议使用额度模式" to ""
+                    )
+                )
+            }
+            item { Spacer(modifier = Modifier.height(4.dp)) }
+            item {
+                TimeSettingCard(
+                    title = "冷冻时间（强制等待时长）",
+                    range = "范围：5 ~ 30 分钟",
+                    color = FreezeBlueDark,
+                    description = "两种模式通用的设置。触发冷冻后的强制等待时间。",
+                    details = listOf(
+                        "冷冻期间显示全屏等待界面，包含倒计时、名言警句和正念建议" to "",
+                        "冷冻界面禁用返回键，无法退出——给自己一个真正停下来的机会" to "",
+                        "设置为 5 分钟 → 短暂冷静，适合轻度限制场景" to "",
+                        "设置为 30 分钟 → 深度冷冻，适合高频成瘾类应用" to "",
+                        "冷冻结束后自动返回，应用恢复正常使用" to ""
+                    )
+                )
+            }
+            item { HorizontalDivider(color = Gray200) }
+
+            // ===== 4. 使用流程 =====
             item {
                 GuideSection(
                     icon = Icons.Default.PlayArrow,
@@ -115,7 +172,7 @@ fun GuideScreen(
                     steps = listOf(
                         "1. 开启权限" to "进入「设置」，按提示开启「使用统计」权限",
                         "2. 设置自由时段" to "点击「时间段规则」区域的 + 按钮添加时间段，如午休 12:00-13:00、下班后 18:00-22:00",
-                        "3. 创建时间模块" to "点击「时间模块」区域的 + 按钮，为不同类型的应用创建独立模块（短时额度、冷冻时长、冷却时长可各自设置）",
+                        "3. 创建时间模块" to "点击「时间模块」区域的 + 按钮，选择工作模式（额度/短时循环），设置时长和冷冻时间",
                         "4. 分配管理应用" to "在时间模块编辑中点击「添加」，勾选需要管理的应用。每个应用可分配到不同的模块",
                         "5. 开始守护" to "返回首页，静心自律将在后台自动监控，守护你的专注时间"
                     )
@@ -123,7 +180,7 @@ fun GuideScreen(
             }
             item { HorizontalDivider(color = Gray200) }
 
-            // ===== 4. 冷冻界面说明 =====
+            // ===== 5. 冷冻界面说明 =====
             item {
                 GuideSection(
                     icon = Icons.Default.Lock,
@@ -138,7 +195,7 @@ fun GuideScreen(
             }
             item { HorizontalDivider(color = Gray200) }
 
-            // ===== 5. 时间段规则详解 =====
+            // ===== 6. 时间段规则详解 =====
             item {
                 GuideSection(
                     icon = Icons.Default.Schedule,
@@ -153,7 +210,7 @@ fun GuideScreen(
             }
             item { HorizontalDivider(color = Gray200) }
 
-            // ===== 6. 常见问题 =====
+            // ===== 7. 常见问题 =====
             item {
                 GuideSection(
                     icon = Icons.AutoMirrored.Filled.Help,
@@ -188,14 +245,14 @@ fun GuideScreen(
             }
             item {
                 FaqCard(
-                    question = "时间模块的「冷却时长」是什么意思？",
-                    answer = "冷冻解除后会进入一段冷却期。如果在冷却期内再次打开该应用，将直接触发新一轮冷冻（跳过短时额度检查）。这有助于度过连续刷手机的冲动高峰。设为 0 表示关闭冷却机制。"
+                    question = "额度模式和短时循环模式有什么区别？",
+                    answer = "额度模式：每天固定额度，用完当天就不能再用（限制时段内）。短时循环模式：单次使用超时后冷冻，解冻后额度恢复可以继续用，形成使用→冷冻→使用→冷冻的循环。额度模式适合想严格限制的应用（如游戏），循环模式适合需要频繁但短时间检查的应用（如社交）。"
                 )
             }
             item {
                 FaqCard(
                     question = "可以给不同应用设置不同的限制策略吗？",
-                    answer = "可以。创建多个时间模块（如「轻度限制」短时60分钟+冷冻5分钟、「严格限制」短时10分钟+冷冻20分钟+冷却10分钟），然后将不同应用分配到不同模块即可。"
+                    answer = "可以。创建多个时间模块（如「游戏专用」额度10分钟+冷冻20分钟、「社交限制」循环5分钟+冷冻10分钟），然后将不同应用分配到不同模块即可。"
                 )
             }
 
@@ -288,6 +345,72 @@ private fun MechanismCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = Gray600
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimeSettingCard(
+    title: String,
+    range: String,
+    description: String,
+    color: androidx.compose.ui.graphics.Color,
+    details: List<Pair<String, String>>
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = color.copy(alpha = 0.06f),
+        tonalElevation = 1.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Gray800
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = color.copy(alpha = 0.15f)
+                ) {
+                    Text(
+                        text = range,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = color,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = Gray600
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            details.forEach { (detail, _) ->
+                Row(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = color,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = detail,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Gray800,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }

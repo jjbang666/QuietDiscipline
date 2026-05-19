@@ -156,9 +156,9 @@ class AppRepository @Inject constructor(
         val defaultProfile = TimeProfile(
             id = configStore.getDefaultProfileId(),
             name = "默认模式",
+            mode = "quota",
             shortTimeMinutes = shortTime,
             freezeMinutes = freezeTime,
-            unfreezeCooldownMinutes = 0,
             isDefault = true
         )
         timeProfileDao.insertProfile(defaultProfile)

@@ -82,15 +82,15 @@ class SettingsViewModel @Inject constructor(
 
     // ===== TimeProfile 管理 =====
 
-    fun createProfile(name: String, shortTimeMinutes: Int, freezeMinutes: Int, unfreezeCooldownMinutes: Int) {
+    fun createProfile(name: String, mode: String, shortTimeMinutes: Int, freezeMinutes: Int) {
         viewModelScope.launch {
             repository.saveProfile(
                 TimeProfile(
                     id = UUID.randomUUID().toString(),
                     name = name,
+                    mode = mode,
                     shortTimeMinutes = shortTimeMinutes,
-                    freezeMinutes = freezeMinutes,
-                    unfreezeCooldownMinutes = unfreezeCooldownMinutes
+                    freezeMinutes = freezeMinutes
                 )
             )
         }

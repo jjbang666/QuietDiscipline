@@ -26,7 +26,7 @@ class AppConfigStore @Inject constructor(
     }
 
     fun setShortTimeMinutes(minutes: Int) {
-        prefs.edit().putInt(KEY_SHORT_TIME_MINUTES, minutes.coerceIn(5, 120)).apply()
+        prefs.edit().putInt(KEY_SHORT_TIME_MINUTES, minutes.coerceIn(0, 120)).apply()
     }
 
     fun getShortTimeSeconds(): Int {

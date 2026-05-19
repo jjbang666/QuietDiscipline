@@ -199,18 +199,18 @@ fun SettingsScreen(
             allApps = state.installedApps,
             profileMappings = state.profileAppMappings,
             onDismiss = { showProfileDialog = false },
-            onSave = { name, shortTime, freezeTime, cooldown ->
+            onSave = { name, mode, shortTime, freezeTime ->
                 if (targetProfile != null) {
                     viewModel.updateProfile(
                         targetProfile.copy(
                             name = name,
+                            mode = mode,
                             shortTimeMinutes = shortTime,
-                            freezeMinutes = freezeTime,
-                            unfreezeCooldownMinutes = cooldown
+                            freezeMinutes = freezeTime
                         )
                     )
                 } else {
-                    viewModel.createProfile(name, shortTime, freezeTime, cooldown)
+                    viewModel.createProfile(name, mode, shortTime, freezeTime)
                 }
                 showProfileDialog = false
             },
@@ -268,8 +268,9 @@ fun ProfileCard(
                     }
                 }
                 Spacer(Modifier.height(4.dp))
+                val modeLabel = if (profile.mode == "cycle") "短时循环" else "额度"
                 Text(
-                    text = "短时${profile.shortTimeMinutes}分 | 冷冻${profile.freezeMinutes}分 | 冷却${profile.unfreezeCooldownMinutes}分",
+                    text = "$modeLabel · 额度${profile.shortTimeMinutes}分 · 冷冻${profile.freezeMinutes}分",
                     style = MaterialTheme.typography.bodySmall,
                     color = Gray600
                 )
@@ -437,11 +438,12 @@ fun TimeRuleDialog(
 
                 Text("选择日期", style = MaterialTheme.typography.bodySmall, color = Gray600)
                 Spacer(modifier = Modifier.height(8.dp))
+                // 第一行：周一到周五
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    allDays.forEach { (value, label) ->
+                    allDays.take(5).forEach { (value, label) ->
                         FilterChip(
                             selected = value in selectedDays,
                             onClick = {
@@ -451,7 +453,29 @@ fun TimeRuleDialog(
                                     selectedDays + value
                                 }
                             },
-                            label = { Text(label, style = MaterialTheme.typography.bodySmall) }
+                            label = { Text(label, style = MaterialTheme.typography.bodySmall) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                // 第二行：周六、周日
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    allDays.drop(5).forEach { (value, label) ->
+                        FilterChip(
+                            selected = value in selectedDays,
+                            onClick = {
+                                selectedDays = if (value in selectedDays) {
+                                    selectedDays - value
+                                } else {
+                                    selectedDays + value
+                                }
+                            },
+                            label = { Text(label, style = MaterialTheme.typography.bodySmall) },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }

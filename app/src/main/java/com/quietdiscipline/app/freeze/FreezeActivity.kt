@@ -1,5 +1,6 @@
 package com.quietdiscipline.app.freeze
 
+import android.app.Activity
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -8,6 +9,7 @@ import androidx.activity.compose.setContent
 import com.quietdiscipline.app.ui.freeze.FreezeScreen
 import com.quietdiscipline.app.ui.theme.QuietDisciplineTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * 全屏冷冻 Activity
@@ -15,6 +17,9 @@ import dagger.hilt.android.AndroidEntryPoint
  */
 @AndroidEntryPoint
 class FreezeActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var freezeManager: FreezeManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,21 +41,35 @@ class FreezeActivity : ComponentActivity() {
             QuietDisciplineTheme {
                 FreezeScreen(
                     frozenPackage = packageName,
-                    freezeMinutes = freezeMinutes
+                    freezeMinutes = freezeMinutes,
+                    onCountdownEnd = {
+                        freezeManager.releaseFreeze()
+                        setResult(Activity.RESULT_OK)
+                        finish()
+                    }
                 )
             }
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        // 如果 Activity 被意外销毁（如手动滑掉），确保冷冻状态被清除
+        if (freezeManager.isFrozen()) {
+            freezeManager.releaseFreeze()
+        }
+    }
+
     override fun onUserLeaveHint() {
-        // 用户按Home键时立即弹回冷冻界面
         super.onUserLeaveHint()
+        // 用户按 Home 键时，不做额外处理
+        // onWindowFocusChanged 会在失去焦点时处理
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (!hasFocus) {
-            // 失去焦点时尝试重新获取焦点（防止切到其他应用）
+            // 失去焦点时尝试重新拉回（通过重新创建 Activity）
             // 注意：这在部分系统上可能被限制
         }
     }

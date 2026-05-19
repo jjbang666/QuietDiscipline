@@ -6,17 +6,18 @@ import androidx.room.PrimaryKey
 /**
  * 时间模块（TimeProfile）—— 可复用的时间配置模板
  *
- * 用户可以创建多个 TimeProfile，每个管理应用分配一个 Profile，
- * 实现对限制时段额度、冷冻时长、解冻冷却的个性化设置。
+ * 两种工作模式：
+ * - "quota"（额度模式）：限制时段内每天固定使用额度，用完即止
+ * - "cycle"（短时循环模式）：短时间使用 → 冷冻 → 额度恢复 → 循环
  */
 @Entity(tableName = "time_profiles")
 data class TimeProfile(
     @PrimaryKey
     val id: String,
     val name: String,                   // 用户可见名称，如"轻度限制"、"游戏专用"
-    val shortTimeMinutes: Int = 30,     // 限制时段日额度(分钟)，5-120
+    val mode: String = "quota",         // 工作模式："quota" | "cycle"
+    val shortTimeMinutes: Int = 30,     // 额度模式=每日额度 / 循环模式=单次使用时长(分钟)，0-120
     val freezeMinutes: Int = 5,         // 冷冻时长(分钟)，5-30
-    val unfreezeCooldownMinutes: Int = 0, // 解冻冷却时长(分钟)，0-60，0=无冷却
     val isDefault: Boolean = false,     // 是否为系统默认 Profile
     val createdAt: Long = System.currentTimeMillis()
 )

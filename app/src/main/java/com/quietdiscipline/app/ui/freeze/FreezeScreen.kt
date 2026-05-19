@@ -27,10 +27,12 @@ import java.util.Locale
 @Composable
 fun FreezeScreen(
     frozenPackage: String,
-    freezeMinutes: Int
+    freezeMinutes: Int,
+    onCountdownEnd: () -> Unit = {}
 ) {
     var remainingSeconds by remember { mutableStateOf(freezeMinutes * 60) }
     val totalSeconds = freezeMinutes * 60
+    var countdownFinished by remember { mutableStateOf(false) }
 
     // 倒计时
     LaunchedEffect(Unit) {
@@ -38,6 +40,8 @@ fun FreezeScreen(
             delay(1000L)
             remainingSeconds--
         }
+        countdownFinished = true
+        onCountdownEnd()
     }
 
     // 随机选取一条名言（静态展示用内置名言库）
@@ -127,13 +131,21 @@ fun FreezeScreen(
         // 倒计时
         item {
             Spacer(modifier = Modifier.height(32.dp))
-            val mins = remainingSeconds / 60
-            val secs = remainingSeconds % 60
-            Text(
-                text = "剩余等待时间：%d:%02d".format(mins, secs),
-                style = MaterialTheme.typography.headlineMedium,
+            if (countdownFinished) {
+                Text(
+                    text = "冷冻结束，即将返回",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Green600
+                )
+            } else {
+                val mins = remainingSeconds / 60
+                val secs = remainingSeconds % 60
+                Text(
+                    text = "剩余等待时间：%d:%02d".format(mins, secs),
+                    style = MaterialTheme.typography.headlineMedium,
                 color = Amber800
             )
+            }
         }
 
         // 进度条

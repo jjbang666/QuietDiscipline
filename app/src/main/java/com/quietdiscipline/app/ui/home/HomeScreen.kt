@@ -111,6 +111,14 @@ private fun StatusBanner(
                     style = MaterialTheme.typography.headlineMedium,
                     color = FreezeBlueDark
                 )
+                if (frozenPackage != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = frozenPackage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FreezeBlueDark.copy(alpha = 0.7f)
+                    )
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "剩余 ${viewModel.formatRemainingTime(freezeRemainingSeconds)}",

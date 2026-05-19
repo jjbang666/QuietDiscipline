@@ -2,6 +2,7 @@ package com.quietdiscipline.app.ui.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -19,7 +20,7 @@ import com.quietdiscipline.app.ui.theme.*
 
 /**
  * TimeProfile 编辑对话框
- * 用于创建新 Profile 或编辑已有 Profile
+ * 支持两种工作模式：额度模式 / 短时循环模式
  *
  * @param existingProfile 非 null 表示编辑模式
  * @param managedPackages 当前 Profile 下已分配的应用包名集合
@@ -33,17 +34,20 @@ fun ProfileEditDialog(
     allApps: List<AppInfo>,
     profileMappings: List<AppProfileMapping>,
     onDismiss: () -> Unit,
-    onSave: (name: String, shortTimeMinutes: Int, freezeMinutes: Int, cooldownMinutes: Int) -> Unit,
+    onSave: (name: String, mode: String, shortTimeMinutes: Int, freezeMinutes: Int) -> Unit,
     onDelete: (() -> Unit)?,
     onAddApp: (packageName: String, appName: String) -> Unit,
     onRemoveApp: (packageName: String) -> Unit
 ) {
     val isNew = existingProfile == null
     var name by remember { mutableStateOf(existingProfile?.name ?: "") }
+    var selectedMode by remember { mutableStateOf(existingProfile?.mode ?: "quota") }
     var shortTime by remember { mutableStateOf((existingProfile?.shortTimeMinutes ?: 30).toFloat()) }
     var freezeTime by remember { mutableStateOf((existingProfile?.freezeMinutes ?: 5).toFloat()) }
-    var cooldown by remember { mutableStateOf((existingProfile?.unfreezeCooldownMinutes ?: 0).toFloat()) }
     var showAppPicker by remember { mutableStateOf(false) }
+
+    val isQuotaMode = selectedMode == "quota"
+    val shortTimeLabel = if (isQuotaMode) "每日额度" else "单次使用时长"
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -62,13 +66,33 @@ fun ProfileEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 短时时长
-                Text("短时时长: ${shortTime.toInt()} 分钟", style = MaterialTheme.typography.bodyMedium)
+                // 模式选择
+                Text("工作模式", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ModeChip(
+                        label = "额度模式",
+                        description = "每天固定额度，用完即止",
+                        selected = selectedMode == "quota",
+                        onClick = { selectedMode = "quota" }
+                    )
+                    ModeChip(
+                        label = "短时循环",
+                        description = "用超→冷冻→恢复→循环",
+                        selected = selectedMode == "cycle",
+                        onClick = { selectedMode = "cycle" }
+                    )
+                }
+
+                // 短时时长 / 每日额度
+                Text("$shortTimeLabel: ${shortTime.toInt()} 分钟", style = MaterialTheme.typography.bodyMedium)
                 Slider(
                     value = shortTime,
                     onValueChange = { shortTime = it },
-                    valueRange = 5f..120f,
-                    steps = 22,
+                    valueRange = 0f..120f,
+                    steps = 23,
                     colors = SliderDefaults.colors(
                         thumbColor = Green600,
                         activeTrackColor = Green400
@@ -85,19 +109,6 @@ fun ProfileEditDialog(
                     colors = SliderDefaults.colors(
                         thumbColor = FreezeBlueDark,
                         activeTrackColor = FreezeBlue
-                    )
-                )
-
-                // 解冻冷却时长
-                Text("解冻冷却: ${cooldown.toInt()} 分钟", style = MaterialTheme.typography.bodyMedium)
-                Slider(
-                    value = cooldown,
-                    onValueChange = { cooldown = it },
-                    valueRange = 0f..60f,
-                    steps = 11,
-                    colors = SliderDefaults.colors(
-                        thumbColor = Amber800,
-                        activeTrackColor = Amber600
                     )
                 )
 
@@ -167,9 +178,9 @@ fun ProfileEditDialog(
                     if (name.isNotBlank()) {
                         onSave(
                             name.trim(),
+                            selectedMode,
                             shortTime.toInt(),
-                            freezeTime.toInt(),
-                            cooldown.toInt()
+                            freezeTime.toInt()
                         )
                     }
                 },
@@ -234,5 +245,40 @@ fun ProfileEditDialog(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun RowScope.ModeChip(
+    label: String,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .weight(1f)
+            .clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.medium,
+        color = if (selected) Green100 else Gray100,
+        tonalElevation = if (selected) 2.dp else 0.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                color = if (selected) Green800 else Gray600
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (selected) Green600 else Gray400
+            )
+        }
     }
 }
