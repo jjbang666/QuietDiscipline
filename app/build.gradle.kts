@@ -23,9 +23,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("../quietdiscipline.jks")
-            storePassword = "quietdiscipline123"
+            storePassword = "zkangkaixin666"
             keyAlias = "quietdiscipline"
-            keyPassword = "quietdiscipline123"
+            keyPassword = "zkangkaixin666"
         }
     }
 
